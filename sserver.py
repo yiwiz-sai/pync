@@ -91,14 +91,7 @@ class MyRequestHandler(SocketServer.StreamRequestHandler):
                 data=myio.getvalue()
                 datasize = struct.pack("i", len(data))
                 print 'send datasize:',len(data) 
-                self.request.send(datasize)
-                
-                while 1:
-                    d=data[0:packsize]
-                    self.request.send(d)
-                    data=data[packsize:]
-                    if data=='':
-                        break
+                self.request.sendall(datasize+data)
                 myio.close()
                 
             elif protocol[0]=='uploadfile':
@@ -147,7 +140,7 @@ class MyRequestHandler(SocketServer.StreamRequestHandler):
 if __name__=='__main__':
     socket.setdefaulttimeout(10)
     port=22000
-    server = SocketServer.ThreadingTCPServer(('127.0.0.1',port),MyRequestHandler)
+    server = SocketServer.ThreadingTCPServer(('0.0.0.0',port),MyRequestHandler)
     print 'start listen port:',port
     try:
         server.serve_forever()

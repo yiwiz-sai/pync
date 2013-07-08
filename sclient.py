@@ -39,6 +39,8 @@ g_pubkey = RSA.load_pub_key_bio(BIO.MemoryBuffer(g_pubkey_string))
 g_prikey = RSA.load_key_bio(BIO.MemoryBuffer(g_prikey_string))
 g_keylen=128#key是1024位也就是128字节，所以每次加密的长度不能超过128-X，所以大数据必须分段加密
 #return None(fail) or msg
+
+
 def pub_encrypt_msg(msg):
     global g_pubkey
     try:
@@ -221,12 +223,12 @@ class MyPythonIO(object):
         print data
 
 def send_data(one_io):
-
+    global g_connect_addr
     sock=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
     data=''
     try:
         connect_success=0
-        sock.connect(('127.0.0.1',22000))
+        sock.connect(g_connect_addr)
         connect_success=1
         packsize=1024*8
         protocol=one_io.fetch_protocol()
@@ -243,12 +245,7 @@ def send_data(one_io):
             if not data:
                 break #no input
 
-            while 1:
-                d=data[0:packsize]
-                sock.sendall(d)
-                data=data[packsize:]
-                if len(data)==0:
-                    break
+            sock.sendall(data)
 
         #============recv data============
         recvsize = sock.recv(4)
@@ -313,6 +310,8 @@ def usage():
     print '\t-wf remotefile localfile                #write file'
     print '\t-p "print 123"                          #exec python script!'
     print '\t-pf localfile(1.py)                     #exec python script file!'
+
+g_connect_addr=('127.0.0.1',22000)
     
 if __name__=='__main__':
     try:
