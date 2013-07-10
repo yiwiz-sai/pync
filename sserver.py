@@ -68,15 +68,16 @@ class MyRequestHandler(SocketServer.StreamRequestHandler):
         fd=None
         try:
             data=''
-            protocol=self.request.recv(packsize)
+            headsize=self.request.recv(4)
+            headsize=struct.unpack("i", headsize)[0]
+
+            protocol=self.request.recv(headsize)
             protocol=pub_decrypt_msg(protocol)
             protocol=deserialization_data(protocol)
                 
             if  protocol[0]=='exec-syscmd' or protocol[0]=='exec-python':
-                print protocol[0]
+                print protocol[0],':'
                 recvsize=protocol[1]
-                self.request.send('protocol ok')
-                print recvsize
                 while recvsize!=0:
                     ret=self.request.recv(packsize)
                     if len(ret)==0:
@@ -90,7 +91,7 @@ class MyRequestHandler(SocketServer.StreamRequestHandler):
                 sys.stdout=oldstdout
                 data=myio.getvalue()
                 datasize = struct.pack("i", len(data))
-                print 'send datasize:',len(data) 
+                #print 'send datasize:',len(data) 
                 self.request.sendall(datasize+data)
                 myio.close()
                 
@@ -98,7 +99,6 @@ class MyRequestHandler(SocketServer.StreamRequestHandler):
                 print protocol[0]
                 self.remotefile=protocol[1]
                 recvsize=protocol[2]
-                self.request.send('protocol ok')
                 fd=open(self.remotefile, 'wb+')
                 while recvsize:
                     ret=self.request.recv(packsize)
@@ -113,13 +113,12 @@ class MyRequestHandler(SocketServer.StreamRequestHandler):
             elif protocol[0]=='downloadfile':
                 print protocol[0]
                 self.remotefile=protocol[1]
-                self.request.send('protocol ok')
                 
-                fd=open(self.remotefile, 'rb')
                 datasize = struct.pack("i", os.path.getsize(self.remotefile))
                 print 'send datasize:',os.path.getsize(self.remotefile) 
                 self.request.send(datasize)
                 
+                fd=open(self.remotefile, 'rb')
                 while 1:
                     ret=fd.read(packsize)
                     if len(ret)==0:

@@ -222,6 +222,7 @@ class MyPythonIO(object):
     def push_to_output(self, data):
         print data
 
+
 def send_data(one_io):
     global g_connect_addr
     sock=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
@@ -234,23 +235,18 @@ def send_data(one_io):
         protocol=one_io.fetch_protocol()
         protocol=serialization_data(protocol)
         protocol=pri_encrypt_msg(protocol)
-        sock.sendall(protocol)
-        data=sock.recv(packsize)
-        if data!='protocol ok':
-            print data
-            return
+        headsize=struct.pack("i", len(protocol))
+        sock.send(headsize+protocol)
         #============send data============
         while 1:
             data=one_io.poll_from_input()
             if not data:
                 break #no input
-
-            sock.sendall(data)
+            sock.send(data)
 
         #============recv data============
         recvsize = sock.recv(4)
         recvsize=struct.unpack("i", recvsize)[0]
-        
         while recvsize:
             data=sock.recv(packsize)
             if len(data)==0:
@@ -259,7 +255,6 @@ def send_data(one_io):
             recvsize-=len(data)
             one_io.push_to_output(data)
         
-        print 'complete!'
     except Exception,e:
         print e
     finally:
@@ -304,54 +299,55 @@ def exec_python(pythonfile_or_data, by_file):
 
 def usage():
     print '%s usage:' % sys.argv[0]
-    print '\t-e cmd                                  #exec system cmd'
-    print '\t-r remotefile [localfile=stdout]        #read file'
-    print '\t-w remotefile "haha"                    #write file'
-    print '\t-wf remotefile localfile                #write file'
-    print '\t-p "print 123"                          #exec python script!'
-    print '\t-pf localfile(1.py)                     #exec python script file!'
+    print '\t ip -e cmd                                  #exec system cmd'
+    print '\t ip -r remotefile [localfile=stdout]        #read file'
+    print '\t ip -w remotefile "haha"                    #write file'
+    print '\t ip -wf remotefile localfile                #write file'
+    print '\t ip -p "print 123"                          #exec python script!'
+    print '\t ip -pf localfile(1.py)                     #exec python script file!'
 
-g_connect_addr=('127.0.0.1',22000)
+from optparse import OptionParser
+parser=OptionParser()
     
 if __name__=='__main__':
     try:
-        if len(sys.argv)<2:
+        if len(sys.argv)<3:
             usage()
             sys.exit(0)
-            
-            
+
+        g_connect_addr=(sys.argv[1],22000)
+        a=2
         socket.setdefaulttimeout(3)
-        if sys.argv[1]=='-e':
-            cmd=' '.join(sys.argv[2:])
+        if sys.argv[a]=='-e':
+            cmd=' '.join(sys.argv[a+1:])
             exec_cmd(cmd)
-            
-        elif sys.argv[1]=='-r':
+
+        elif sys.argv[a]=='-r':
             localfile=''
-            remotefile=sys.argv[2]
-            if len(sys.argv)>=4:
-                localfile=sys.argv[3]
+            remotefile=sys.argv[a+1]
+            if len(sys.argv)>a+2:
+                localfile=sys.argv[a+2]
             read_file(localfile, remotefile)
-            
-        elif sys.argv[1]=='-w':
-            remotefile=sys.argv[2]
-            data=sys.argv[3]
+
+        elif sys.argv[a]=='-w':
+            remotefile=sys.argv[a+1]
+            data=' '.join(sys.argv[a+2:])
             write_file(data, remotefile, False)
-            
-        elif sys.argv[1]=='-wf':
-            remotefile=sys.argv[2]
-            localfile=sys.argv[3]
+
+        elif sys.argv[a]=='-wf':
+            remotefile=sys.argv[a+1]
+            localfile=sys.argv[a+2]
             write_file(localfile, remotefile, True)
-            
-        elif sys.argv[1]=='-p':
+
+        elif sys.argv[a]=='-p':
             pythonfile_or_data=default_template
-            if len(sys.argv)>=3:
-                pythonfile_or_data=sys.argv[2]
+            pythonfile_or_data=sys.argv[a+1]
             exec_python(pythonfile_or_data, False)
-        
-        elif sys.argv[1]=='-pf':
-            pythonfile_or_data=sys.argv[2]
+
+        elif sys.argv[a]=='-pf':
+            pythonfile_or_data=sys.argv[a+1]
             exec_python(pythonfile_or_data, True)
-            
+
         else:
             usage()
     except Exception, error:
